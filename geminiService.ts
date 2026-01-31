@@ -3,11 +3,17 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { PrescriptionData, ReportDetail } from "./types";
 
 /**
- * Creates a new instance of GoogleGenAI using the environment variable.
- * Moving this inside functions prevents top-level reference errors on load.
+ * AI থেকে আসা রেসপন্স অনেক সময় Markdown (```json ... ```) আকারে আসে।
+ * এই ফাংশনটি সেই অতিরিক্ত টেক্সট বাদ দিয়ে পিওর JSON স্ট্রিং বের করে আনে।
  */
+const sanitizeJson = (text: string): string => {
+  return text.replace(/```json/g, '').replace(/```/g, '').trim();
+};
+
 const getAIClient = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+  // Defensive check for API_KEY
+  const apiKey = (window as any).process?.env?.API_KEY || process?.env?.API_KEY || "";
+  return new GoogleGenAI({ apiKey });
 };
 
 export const generateMedicalAdvice = async (
@@ -37,7 +43,7 @@ export const generateMedicalAdvice = async (
       ).join("\n")
     : "রোগীর কোনো সাম্প্রতিক মেডিকেল রিপোর্ট নেই।";
 
-  const promptText = `তুমি একজন অভিজ্ঞ ডাক্তার। রোগীর নিম্নোক্ত তথ্যগুলো এবং আপলোড করা রিপোর্টের ছবি (যদি থাকে) বিশ্লেষণ করে রোগ নির্ণয় করো এবং বাংলায় একটি পূর্ণাঙ্গ প্রেসক্রিপশন তৈরি করো।
+  const promptText = `তুমি একজন অভিজ্ঞ ডাক্তার। রোগীর নিম্নোক্ত তথ্যগুলো বিশ্লেষণ করে বাংলায় একটি পূর্ণাঙ্গ প্রেসক্রিপশন তৈরি করো।
 
 রোগীর তথ্য:
 - নাম: ${patientInfo.name}
@@ -48,11 +54,9 @@ export const generateMedicalAdvice = async (
 - ${reportsDescription}
 
 তোমার কাজ:
-১. লক্ষণের উপর ভিত্তি করে এবং রিপোর্টের ছবি/রেজাল্ট বিশ্লেষণ করে সম্ভাব্য রোগ (Diagnosis) নির্ধারণ করো।
-২. বাংলাদেশের জনপ্রিয় কোম্পানির ওযুধের ব্র্যান্ড নাম দাও। 
-৩. ওষুধের নামের সাথে অবশ্যই জেনেরিক নাম দিবে।
-৪. খাবারের আগে না পরে, কতদিন খাবে - এগুলো সহজ বাংলায় লিখবে।
-৫. জীবনধারা নিয়ে প্রয়োজনীয় পরামর্শ দিবে।`;
+১. লক্ষণের উপর ভিত্তি করে রোগ নির্ণয় (Diagnosis) করো।
+২. বাংলাদেশের ব্র্যান্ড ওযুধের নাম (যেমন Napa) এবং পাশে ব্র্যাকেটে জেনেরিক নাম (যেমন Paracetamol) দাও। 
+৩. খাবারের আগে না পরে, কতদিন খাবে - এগুলো সহজ বাংলায় লিখবে।`;
 
   const parts: any[] = [{ text: promptText }];
   
@@ -73,7 +77,7 @@ export const generateMedicalAdvice = async (
     model: 'gemini-3-pro-preview',
     contents: { parts },
     config: {
-      systemInstruction: "You are a senior professional AI Medical Doctor in Bangladesh. Analyze symptoms, history, and medical reports. Provide advice and medicines available in Bangladesh using brand names (Generic names). Output MUST be in valid JSON format in Bengali.",
+      systemInstruction: "You are a senior professional AI Medical Doctor in Bangladesh. Provide clinical advice in Bengali. Output MUST be in valid JSON format in Bengali.",
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -82,21 +86,15 @@ export const generateMedicalAdvice = async (
           age: { type: Type.STRING },
           gender: { type: Type.STRING },
           date: { type: Type.STRING },
-          symptoms: { 
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-          },
+          symptoms: { type: Type.ARRAY, items: { type: Type.STRING } },
           diagnosis: { type: Type.STRING },
-          advice: { 
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-          },
+          advice: { type: Type.ARRAY, items: { type: Type.STRING } },
           medicines: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
-                name: { type: Type.STRING, description: "Brand Name (Generic Name)" },
+                name: { type: Type.STRING },
                 dosage: { type: Type.STRING },
                 duration: { type: Type.STRING },
                 instruction: { type: Type.STRING }
@@ -104,10 +102,7 @@ export const generateMedicalAdvice = async (
               required: ["name", "dosage", "duration", "instruction"]
             }
           },
-          precautions: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-          },
+          precautions: { type: Type.ARRAY, items: { type: Type.STRING } },
           disclaimer: { type: Type.STRING }
         },
         required: ["patientName", "age", "gender", "date", "symptoms", "diagnosis", "advice", "medicines", "precautions", "disclaimer"]
@@ -116,20 +111,20 @@ export const generateMedicalAdvice = async (
   });
 
   try {
-    const text = response.text;
-    if (!text) throw new Error("Empty response from AI");
-    return JSON.parse(text);
+    const rawText = response.text || "";
+    const cleanJson = sanitizeJson(rawText);
+    return JSON.parse(cleanJson);
   } catch (error) {
     console.error("Failed to parse Gemini response", error);
-    throw new Error("Prescription generation failed.");
+    throw new Error("প্রেসক্রিপশন তৈরি করা সম্ভব হয়নি। আবার চেষ্টা করুন।");
   }
 };
 
 export const searchMedicineInfo = async (medName: string) => {
   const ai = getAIClient();
-  const prompt = `ওষুধের নাম: ${medName}। এই ওষুধের জেনেরিক নাম, প্রস্তুতকারক কোম্পানি, এবং বাংলাদেশের বর্তমান বাজারের আনুমানিক খুচরা মূল্য দাও। এছাড়া ৩টি বিকল্প ওষুধের তালিকা দাও।`;
+  const prompt = `ওষুধের নাম: ${medName}। এই ওষুধের জেনেরিক নাম, প্রস্তুতকারক কোম্পানি, এবং বাংলাদেশের বাজারের আনুমানিক মূল্য দাও। এছাড়া ৩টি বিকল্প ওষুধের তালিকা দাও।`;
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-3-flash-preview", // Flash model is faster for simple search
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -158,5 +153,7 @@ export const searchMedicineInfo = async (medName: string) => {
       }
     }
   });
-  return JSON.parse(response.text);
+  
+  const rawText = response.text || "";
+  return JSON.parse(sanitizeJson(rawText));
 };
