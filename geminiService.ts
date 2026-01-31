@@ -7,12 +7,22 @@ import { PrescriptionData, ReportDetail } from "./types";
  * এই ফাংশনটি সেই অতিরিক্ত টেক্সট বাদ দিয়ে পিওর JSON স্ট্রিং বের করে আনে।
  */
 const sanitizeJson = (text: string): string => {
-  return text.replace(/```json/g, '').replace(/```/g, '').trim();
+  if (!text) return "";
+  // Remove markdown code blocks if present
+  let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+  // Find the first '{' and the last '}' to get the JSON object
+  const firstBrace = cleanText.indexOf('{');
+  const lastBrace = cleanText.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+  }
+  return cleanText;
 };
 
 const getAIClient = () => {
-  // Defensive check for API_KEY
-  const apiKey = (window as any).process?.env?.API_KEY || process?.env?.API_KEY || "";
+  // Use a fallback for process.env to avoid reference errors
+  const apiKey = (typeof process !== 'undefined' && process.env?.API_KEY) || 
+                 (window as any).process?.env?.API_KEY || "";
   return new GoogleGenAI({ apiKey });
 };
 
@@ -55,7 +65,7 @@ export const generateMedicalAdvice = async (
 
 তোমার কাজ:
 ১. লক্ষণের উপর ভিত্তি করে রোগ নির্ণয় (Diagnosis) করো।
-২. বাংলাদেশের ব্র্যান্ড ওযুধের নাম (যেমন Napa) এবং পাশে ব্র্যাকেটে জেনেরিক নাম (যেমন Paracetamol) দাও। 
+২. ওযুধের ব্র্যান্ড নাম (যেমন Napa) এবং জেনেরিক নাম (যেমন Paracetamol) দাও। 
 ৩. খাবারের আগে না পরে, কতদিন খাবে - এগুলো সহজ বাংলায় লিখবে।`;
 
   const parts: any[] = [{ text: promptText }];
@@ -74,7 +84,7 @@ export const generateMedicalAdvice = async (
   });
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-3-flash-preview',
     contents: { parts },
     config: {
       systemInstruction: "You are a senior professional AI Medical Doctor in Bangladesh. Provide clinical advice in Bengali. Output MUST be in valid JSON format in Bengali.",
@@ -124,7 +134,7 @@ export const searchMedicineInfo = async (medName: string) => {
   const ai = getAIClient();
   const prompt = `ওষুধের নাম: ${medName}। এই ওষুধের জেনেরিক নাম, প্রস্তুতকারক কোম্পানি, এবং বাংলাদেশের বাজারের আনুমানিক মূল্য দাও। এছাড়া ৩টি বিকল্প ওষুধের তালিকা দাও।`;
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview", // Flash model is faster for simple search
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -154,6 +164,11 @@ export const searchMedicineInfo = async (medName: string) => {
     }
   });
   
-  const rawText = response.text || "";
-  return JSON.parse(sanitizeJson(rawText));
+  try {
+    const rawText = response.text || "";
+    return JSON.parse(sanitizeJson(rawText));
+  } catch (e) {
+    console.error("Medicine search failed", e);
+    throw e;
+  }
 };

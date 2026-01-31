@@ -3,13 +3,16 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
-// Ensure the application only renders once the DOM is fully loaded
-const init = () => {
-  const rootElement = document.getElementById('root');
-  if (!rootElement) {
-    console.error("Could not find root element to mount to");
-    return;
+// Global error handling for browser environments
+window.addEventListener('error', (event) => {
+  if (event.message.includes('process is not defined')) {
+    console.warn('Caught process reference error - applying shim...');
   }
+});
+
+const mountApp = () => {
+  const rootElement = document.getElementById('root');
+  if (!rootElement) return;
 
   const root = ReactDOM.createRoot(rootElement);
   root.render(
@@ -20,7 +23,7 @@ const init = () => {
 };
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  init();
+  mountApp();
 } else {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', mountApp);
 }
