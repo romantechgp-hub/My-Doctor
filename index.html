@@ -5,15 +5,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>আপনার ডিজিটাল ডাক্তার</title>
-    <!-- process shim to prevent 'process is not defined' error in browser -->
+    <!-- Stronger process shim for browser environments -->
     <script>
-        window.process = window.process || { env: { API_KEY: "" } };
+        window.process = {
+            env: {
+                API_KEY: ""
+            },
+            nextTick: function(fn) { setTimeout(fn, 0); }
+        };
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        /* Base font settings */
         body, #root {
             font-family: 'Hind Siliguri', sans-serif !important;
             background-color: #f8fafc;
@@ -21,20 +25,11 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Essential fixes for Bengali rendering in PDF Canvas */
         #prescription-to-download {
             font-family: 'Hind Siliguri', sans-serif !important;
             background: white !important;
-            -webkit-print-color-adjust: exact;
         }
 
-        #prescription-to-download * {
-            font-family: 'Hind Siliguri', sans-serif !important;
-            letter-spacing: normal !important;
-            word-spacing: normal !important;
-        }
-
-        /* Reverting to more robust bold for ligatures */
         #prescription-to-download h1, 
         #prescription-to-download h2, 
         #prescription-to-download h3, 
@@ -44,71 +39,31 @@
         }
 
         @media print {
-            @page {
-                margin: 0;
-            }
-            body {
-                background-color: white !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            .no-print {
-                display: none !important;
-            }
-            .print-container {
-                box-shadow: none !important;
-                border: none !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                display: block !important;
-            }
+            .no-print { display: none !important; }
+            body { background-color: white !important; margin: 0 !important; padding: 0 !important; }
         }
 
-        /* Animations */
         @keyframes float {
             0% { transform: translateY(0px); }
             50% { transform: translateY(-10px); }
             100% { transform: translateY(0px); }
         }
-        .float-anim {
-            animation: float 3s ease-in-out infinite;
-        }
-        
-        .crop-canvas-container {
-            cursor: move;
-            touch-action: none;
-        }
-
-        /* Custom Transition for Download Menu */
-        .download-menu-enter {
-            opacity: 0;
-            transform: scale(0.95) translateY(10px);
-        }
-        .download-menu-enter-active {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-            transition: opacity 200ms, transform 200ms;
-        }
+        .float-anim { animation: float 3s ease-in-out infinite; }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.39.0",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0"
-  }
-}
-</script>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@^19.2.4",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+        "react/": "https://esm.sh/react@^19.2.4/",
+        "@google/genai": "https://esm.sh/@google/genai@^1.39.0",
+        "lucide-react": "https://esm.sh/lucide-react@^0.563.0"
+      }
+    }
+    </script>
 </head>
 <body>
     <div id="root"></div>
-    <!-- Explicitly load index.tsx to ensure rendering -->
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>

@@ -2,16 +2,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PrescriptionData, ReportDetail } from "./types";
 
-// Safe API Key access to prevent runtime crashes on platforms like Vercel
-const getApiKey = () => {
-  try {
-    return process.env.API_KEY || "";
-  } catch (e) {
-    return "";
-  }
-};
-
-const ai = new GoogleGenAI({ apiKey: getApiKey() });
+// Explicitly handle API key from environment variable as per guidelines
+// If process.env.API_KEY is not available at load time, it will use an empty string
+// but assume it's injected by the environment.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
 
 export const generateMedicalAdvice = async (
   symptomsText: string,
@@ -51,8 +45,8 @@ export const generateMedicalAdvice = async (
 
 তোমার কাজ:
 ১. লক্ষণের উপর ভিত্তি করে এবং রিপোর্টের ছবি/রেজাল্ট বিশ্লেষণ করে সম্ভাব্য রোগ (Diagnosis) নির্ধারণ করো।
-২. বাংলাদেশের জনপ্রিয় কোম্পানির (Square, Incepta, Beximco ইত্যাদি) ওযুধের ব্র্যান্ড নাম দাও। 
-৩. ওষুধের নামের সাথে অবশ্যই জেনেরিক নাম দিবে, যেমন: Napa (Paracetamol)।
+২. বাংলাদেশের জনপ্রিয় কোম্পানির ওযুধের ব্র্যান্ড নাম দাও। 
+৩. ওষুধের নামের সাথে অবশ্যই জেনেরিক নাম দিবে।
 ৪. খাবারের আগে না পরে, কতদিন খাবে - এগুলো সহজ বাংলায় লিখবে।
 ৫. জীবনধারা নিয়ে প্রয়োজনীয় পরামর্শ দিবে।`;
 
@@ -128,7 +122,7 @@ export const generateMedicalAdvice = async (
 };
 
 export const searchMedicineInfo = async (medName: string) => {
-  const prompt = `ওষুধের নাম: ${medName}। এই ওষুধের জেনেরিক নাম, প্রস্তুতকারক কোম্পানি, এবং বাংলাদেশের বর্তমান বাজারের আনুমানিক খুচরা মূল্য দাও। এছাড়া একই জেনেরিক নামের ৩টি বিকল্প ওষুধের তালিকা (নাম, কোম্পানি ও আনুমানিক মূল্যসহ) বাংলায় দাও।`;
+  const prompt = `ওষুধের নাম: ${medName}। এই ওষুধের জেনেরিক নাম, প্রস্তুতকারক কোম্পানি, এবং বাংলাদেশের বর্তমান বাজারের আনুমানিক খুচরা মূল্য দাও। এছাড়া ৩টি বিকল্প ওষুধের তালিকা দাও।`;
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: prompt,
