@@ -2,7 +2,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PrescriptionData, ReportDetail } from "./types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Safe API Key access to prevent runtime crashes on platforms like Vercel
+const getApiKey = () => {
+  try {
+    return process.env.API_KEY || "";
+  } catch (e) {
+    return "";
+  }
+};
+
+const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
 export const generateMedicalAdvice = async (
   symptomsText: string,

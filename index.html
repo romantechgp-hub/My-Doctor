@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>আপনার ডিজিটাল ডাক্তার</title>
+    <!-- process shim to prevent 'process is not defined' error in browser -->
+    <script>
+        window.process = window.process || { env: { API_KEY: "" } };
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -104,5 +108,7 @@
 </head>
 <body>
     <div id="root"></div>
+    <!-- Explicitly load index.tsx to ensure rendering -->
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>
