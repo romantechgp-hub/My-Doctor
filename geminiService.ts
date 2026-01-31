@@ -2,10 +2,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PrescriptionData, ReportDetail } from "./types";
 
-// Explicitly handle API key from environment variable as per guidelines
-// If process.env.API_KEY is not available at load time, it will use an empty string
-// but assume it's injected by the environment.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+/**
+ * Creates a new instance of GoogleGenAI using the environment variable.
+ * Moving this inside functions prevents top-level reference errors on load.
+ */
+const getAIClient = () => {
+  return new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+};
 
 export const generateMedicalAdvice = async (
   symptomsText: string,
@@ -18,6 +21,7 @@ export const generateMedicalAdvice = async (
     reportDetails: ReportDetail[];
   }
 ): Promise<PrescriptionData> => {
+  const ai = getAIClient();
   const combinedSymptoms = [
     ...patientInfo.selectedSymptoms,
     symptomsText ? `অতিরিক্ত লক্ষণ: ${symptomsText}` : ""
@@ -122,6 +126,7 @@ export const generateMedicalAdvice = async (
 };
 
 export const searchMedicineInfo = async (medName: string) => {
+  const ai = getAIClient();
   const prompt = `ওষুধের নাম: ${medName}। এই ওষুধের জেনেরিক নাম, প্রস্তুতকারক কোম্পানি, এবং বাংলাদেশের বর্তমান বাজারের আনুমানিক খুচরা মূল্য দাও। এছাড়া ৩টি বিকল্প ওষুধের তালিকা দাও।`;
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
